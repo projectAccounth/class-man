@@ -8,6 +8,10 @@
 class textButton {
 private:
     static int nextId;
+
+    bool isClicked(int x, int y);
+
+    void checkHover(int mouseX, int mouseY);
 public:
     // dimension, size, position and initial RGB color for the button
     SDL_Rect buttonRect;
@@ -53,10 +57,6 @@ public:
 
     void setAction(std::function<void()> actionFunction);
 
-    bool isClicked(int x, int y);
-
-    void checkHover(int mouseX, int mouseY);
-
     bool isVisible() const;
 
     void toggleVisiblility(bool value);
@@ -74,6 +74,10 @@ private:
     SDL_Texture* buttonTexture;
     SDL_Texture* hoverTexture; // texture for hovering, set hoverTexture to buttonTexture if you don't want hover.
     static int nextId;
+
+    bool isClicked(int x, int y);
+
+    void checkHover(int mouseX, int mouseY);
 public:
     // dimension, size, position and initial RGB color for the button
     SDL_Rect buttonRect;
@@ -100,10 +104,6 @@ public:
     void render(SDL_Renderer* renderer);
 
     void setAction(std::function<void()> actionFunction);
-
-    bool isClicked(int x, int y);
-
-    void checkHover(int mouseX, int mouseY);
 
     bool isVisible() const;
 

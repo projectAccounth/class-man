@@ -39,6 +39,10 @@ class imageManager {
 public:
 	std::vector<image> images;
 
+	/*
+	Adds an image.
+	@param image im
+	*/
 	void add(image img);
 
 	void initializeAll(SDL_Renderer* renderer);

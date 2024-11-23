@@ -8,8 +8,6 @@
 #include "../include/studentInfo.h"
 
 int activeButtonId;
-int tableRows = 4, tableColumns = 4;
-int tbSize = 60;
 
 SDL_Window* mainWindow = NULL;
 SDL_Renderer* mainRenderer = NULL;
@@ -17,14 +15,12 @@ SDL_Renderer* mainRenderer = NULL;
 // window's color, change please
 SDL_Color windowColor = {255, 255, 255 ,255};
 
-std::vector<std::string> students(30, "");
-
 // A table for 2 students, left -> right
 typedef struct stTable2 {
 	textButton s1, s2;
 	stTable2(int x0, int y0, const char* s1n, const char* s2n, TTF_Font* f, int tableSize) :
-		s1(textButton(x0, y0, tableSize, tableSize, SDL_Color(177, 177, 177, 255), s1n, SDL_Color(0, 0, 0, 255), SDL_Color(122, 122, 122, 255), f, CENTER, CENTER)),
-		s2(textButton(x0 + tableSize + 3, y0, tableSize, tableSize, SDL_Color(177, 177, 177, 255), s2n, SDL_Color(0, 0, 0, 255), SDL_Color(122, 122, 122, 255), f, CENTER, CENTER)) {}
+		s1(textButton(x0, y0, tableSize, tableSize, defaultButtonColor, s1n, defaultTextColor, hoveredButtonColor, f, CENTER, CENTER)),
+		s2(textButton(x0 + tableSize + 3, y0, tableSize, tableSize, defaultButtonColor, s2n, defaultTextColor, hoveredButtonColor, f, CENTER, CENTER)) {}
 } stTable2;
 
 buttonManager studentBtns;
@@ -34,7 +30,7 @@ std::vector <std::vector<textBox>> labelBoxes(tableColumns);
 
 int main(int argc, char* argv[]) {
 
-	int tableCount = students.size() / 2;
+	int tableCount = students / 2;
 
 	Program program;
 
@@ -50,17 +46,17 @@ int main(int argc, char* argv[]) {
 
 	editableTextBox nameEnterBox(SDL_Rect(WINDOW_WIDTH - 200, WINDOW_HEIGHT - 40, 180, 30),
 		SDL_Color(177, 177, 177, 188), "",
-		SDL_Color(0, 0, 0, 255),
+		defaultTextColor,
 		mainFont15, LEFT, CENTER, false);
 
 	editableTextBox saveLoadName(SDL_Rect(80 + 50 + 10, WINDOW_HEIGHT - 40, 180, 30),
 		SDL_Color(177, 177, 177, 188), "",
-		SDL_Color(0, 0, 0, 255),
+		defaultTextColor,
 		mainFont15, LEFT, CENTER, false);
 
 	textBox savePromptLabel(SDL_Rect(80 + 50 + 10, WINDOW_HEIGHT - 70, 180, 30),
 		SDL_Color(177, 177, 177, 0), "Name for the save:",
-		SDL_Color(0, 0, 0, 255),
+		defaultTextColor,
 		mainFont15, LEFT, CENTER);
 
 	saveLoadName.toggleVisibility(false);
@@ -86,7 +82,7 @@ int main(int argc, char* argv[]) {
 			if (j == tableRows - 1 && i == 0) continue;
 			labelBoxes[j].push_back(textBox(SDL_Rect(tbSize * (3 * i + 1), tbSize * 2 * j, tbSize * 2 + 10, tbSize),
 				SDL_Color(177, 177, 177, 0), std::to_string(cntr),
-				SDL_Color(0, 0, 0, 255),
+				defaultTextColor,
 				mainFont15, CENTER, CENTER));
 			cntr++;
 		}
@@ -94,25 +90,44 @@ int main(int argc, char* argv[]) {
 
 	textButton applyButton(WINDOW_WIDTH - 200 - 50 - 10, WINDOW_HEIGHT - 40,
 		50, 30,
-		SDL_Color(177, 177, 177, 255),
-		"Apply", SDL_Color(0, 0, 0, 255),
-		SDL_Color(122, 122, 122, 255),
+		defaultButtonColor,
+		"Apply", defaultTextColor,
+		hoveredButtonColor,
 		mainFont15,
 		CENTER, CENTER);
+
 	textButton saveConfButton(20 + 50 + 10, WINDOW_HEIGHT - 40,
 		50, 30,
-		SDL_Color(177, 177, 177, 255),
-		"Save", SDL_Color(0, 0, 0, 255),
-		SDL_Color(122, 122, 122, 255),
+		defaultButtonColor,
+		"Save", defaultTextColor,
+		hoveredButtonColor,
 		mainFont15,
 		CENTER, CENTER);
 	textButton loadConfButton(20, WINDOW_HEIGHT - 40,
 		50, 30,
-		SDL_Color(177, 177, 177, 255),
-		"Load", SDL_Color(0, 0, 0, 255),
-		SDL_Color(122, 122, 122, 255),
+		defaultButtonColor,
+		"Load", defaultTextColor,
+		hoveredButtonColor,
 		mainFont15,
 		CENTER, CENTER);
+
+	textButton cancelButton(80 + 50 + 10 + 180 + (50 + 20), WINDOW_HEIGHT - 40,
+		50, 30,
+		defaultButtonColor,
+		"Cancel", defaultTextColor,
+		hoveredButtonColor,
+		mainFont15,
+		CENTER, CENTER);
+	textButton confirmButton(80 + 50 + 10 + 180 + 10, WINDOW_HEIGHT - 40,
+		50, 30,
+		defaultButtonColor,
+		"Confirm", defaultTextColor,
+		hoveredButtonColor,
+		mainFont15,
+		CENTER, CENTER);
+
+	cancelButton.visible = false;
+	confirmButton.visible = false;
 
 
 	for (auto& button : studentBtns.buttons) {
@@ -145,20 +160,31 @@ int main(int argc, char* argv[]) {
 	});
 
 	saveConfButton.setAction([&]() {
+		if (nameEnterBox.editable)
+			return;
+
+		confirmButton.toggleVisiblility(true);
+		cancelButton.toggleVisiblility(true);
+		saveLoadName.toggleVisibility(true);
+		savePromptLabel.toggleVisibility(true);
 		for (auto& button : studentBtns.buttons) {
 			std::visit([&](auto& btn) {
-				if constexpr (std::is_same_v<std::decay_t<decltype(btn)>, textButton>) {
-					Student stData = { btn.text, btn.id };
-					saveStudentDataBinary(stData, "studentData.dat");
-				}
+				btn.active = false;
 			}, button);
 		}
+		saveConfButton.active = false;
+		loadConfButton.active = false;
+
+		saveLoadName.reset();
+		saveLoadName.editable = true;
 	});
 	
 	studentBtns.loadAllText(mainRenderer);
 	applyButton.loadText(mainRenderer);
 	saveConfButton.loadText(mainRenderer);
 	loadConfButton.loadText(mainRenderer);
+	confirmButton.loadText(mainRenderer);
+	cancelButton.loadText(mainRenderer);
 
 	applyButton.toggleActive(false);
 
@@ -174,6 +200,8 @@ int main(int argc, char* argv[]) {
 			saveConfButton.handleEvents(e);
 			loadConfButton.handleEvents(e);
 			saveLoadName.handleEvent(e);
+			confirmButton.handleEvents(e);
+			cancelButton.handleEvents(e);
 		}
 		
 		SDL_SetRenderDrawColor(mainRenderer, windowColor.r, windowColor.g, windowColor.b, windowColor.a);
@@ -186,6 +214,8 @@ int main(int argc, char* argv[]) {
 		loadConfButton.render(mainRenderer);
 		saveLoadName.render(mainRenderer);
 		savePromptLabel.render(mainRenderer);
+		confirmButton.render(mainRenderer);
+		cancelButton.render(mainRenderer);
 
 		for (auto& boxes : labelBoxes) {
 			for (auto& box : boxes) {

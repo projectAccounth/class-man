@@ -25,6 +25,14 @@
 #include <type_traits>
 #include <fstream>
 
+const int tableRows = 4, tableColumns = 4;
+const int tbSize = 60;
+const int students = 30;
+
+const SDL_Color defaultButtonColor(177, 177, 177, 255);
+const SDL_Color hoveredButtonColor(122, 122, 122, 255);
+const SDL_Color defaultTextColor(0, 0, 0, 255);
+
 enum textAlign {
     LEFT,
     CENTER,

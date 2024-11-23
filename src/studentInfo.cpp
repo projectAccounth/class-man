@@ -24,7 +24,7 @@ std::string sanitizeFileName(const std::string& filename) {
 
 void saveStudentDataBinary(const Student& student, const std::string& filename) {
 	std::string finalFileName = sanitizeFileName(filename);
-	std::ofstream outFile(finalFileName, std::ios::binary | std::ios::app | std::ios::out); // Open in binary append mode
+	std::ofstream outFile(finalFileName.c_str(), std::ios::binary | std::ios::app | std::ios::out); // Open in binary append mode
 	if (outFile.is_open()) {
 		size_t nameLength = student.name.size();
 		outFile.write(reinterpret_cast<char*>(&nameLength), sizeof(nameLength)); // Write name length
@@ -33,6 +33,7 @@ void saveStudentDataBinary(const Student& student, const std::string& filename) 
 		outFile.close();
 	}
 	else {
+		std::cerr << "Name: " << finalFileName << '\n';
 		std::cerr << "Unable to open file for writing.\n";
 	}
 }
