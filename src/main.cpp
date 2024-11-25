@@ -8,6 +8,7 @@
 #include "../include/studentInfo.h"
 
 int activeButtonId;
+int activeSLFlag = 0;
 
 SDL_Window* mainWindow = NULL;
 SDL_Renderer* mainRenderer = NULL;
@@ -148,11 +149,12 @@ int main(int argc, char* argv[]) {
 			std::visit([&](auto& btn) {
 				if constexpr (std::is_same_v<std::decay_t<decltype(btn)>, textButton>) {
 					if (btn.id != activeButtonId) return;
-					btn.text = nameEnterBox.text.c_str();
+					btn.text = nameEnterBox.text;
 					btn.loadText(mainRenderer);
 					nameEnterBox.reset();
 					nameEnterBox.editable = false;
 					applyButton.toggleActive(false);
+					std::cout << btn.text << '\n';
 					SDL_StopTextInput();
 				}
 			}, button);
@@ -162,6 +164,8 @@ int main(int argc, char* argv[]) {
 	saveConfButton.setAction([&]() {
 		if (nameEnterBox.editable)
 			return;
+
+		activeSLFlag = 1;
 
 		confirmButton.toggleVisiblility(true);
 		cancelButton.toggleVisiblility(true);
@@ -177,6 +181,87 @@ int main(int argc, char* argv[]) {
 
 		saveLoadName.reset();
 		saveLoadName.editable = true;
+
+		SDL_StartTextInput();
+	});
+
+	loadConfButton.setAction([&]() {
+		if (nameEnterBox.editable)
+			return;
+
+		activeSLFlag = 2;
+
+		confirmButton.toggleVisiblility(true);
+		cancelButton.toggleVisiblility(true);
+		saveLoadName.toggleVisibility(true);
+		savePromptLabel.toggleVisibility(true);
+		for (auto& button : studentBtns.buttons) {
+			std::visit([&](auto& btn) {
+				btn.active = false;
+				}, button);
+		}
+		saveConfButton.active = false;
+		loadConfButton.active = false;
+
+		saveLoadName.reset();
+		saveLoadName.editable = true;
+
+		SDL_StartTextInput();
+	});
+
+	cancelButton.setAction([&]() {
+		activeSLFlag = 0;
+		confirmButton.toggleVisiblility(false);
+		cancelButton.toggleVisiblility(false);
+		saveLoadName.toggleVisibility(false);
+		savePromptLabel.toggleVisibility(false);
+		for (auto& button : studentBtns.buttons) {
+			std::visit([&](auto& btn) {
+				btn.active = true;
+				}, button);
+		}
+		saveConfButton.active = true;
+		loadConfButton.active = true;
+
+		saveLoadName.reset();
+		saveLoadName.editable = false;
+
+		SDL_StopTextInput();
+	});
+
+	confirmButton.setAction([&]() {
+		confirmButton.toggleVisiblility(false);
+		cancelButton.toggleVisiblility(false);
+		saveLoadName.toggleVisibility(false);
+		savePromptLabel.toggleVisibility(false);
+		std::vector<Student> studentList;
+		for (auto& button : studentBtns.buttons) {
+			std::visit([&](auto& btn) {
+				btn.active = true;
+				if constexpr (std::is_same_v<std::decay_t<decltype(btn)>, textButton>) {
+					studentList.push_back({btn.text, btn.id});
+				}
+			}, button);
+		}
+		switch (activeSLFlag) {
+		// For saving operation
+		case 1:
+			saveStudentDataBinary(studentList, saveLoadName.text);
+			break;
+
+		// For loading operation
+		case 2:
+			readStudentDataBinary(saveLoadName.text, studentBtns, mainRenderer);
+			break;
+		}
+		activeSLFlag = 0;
+		saveConfButton.active = true;
+		loadConfButton.active = true;
+
+		saveLoadName.reset();
+		saveLoadName.editable = false;
+
+		SDL_StopTextInput();
 	});
 	
 	studentBtns.loadAllText(mainRenderer);

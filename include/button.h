@@ -22,7 +22,7 @@ public:
     SDL_Color hoverColor; // color for hovering
 
     TTF_Font* textFont; // font for the text in the textButton
-    const char* text; // text for the textButton
+    std::string text; // text for the textButton
 
     textAlign xAlign, yAlign;
 
