@@ -24,6 +24,8 @@
 #include <variant>
 #include <type_traits>
 #include <fstream>
+#include <algorithm>
+#include <random>
 
 const int tableRows = 4, tableColumns = 4;
 const int tbSize = 60;

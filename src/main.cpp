@@ -126,6 +126,13 @@ int main(int argc, char* argv[]) {
 		hoveredButtonColor,
 		mainFont15,
 		CENTER, CENTER);
+	textButton shuffleButton(20, WINDOW_HEIGHT - 80,
+		110, 30,
+		defaultButtonColor,
+		"Shuffle Positions", defaultTextColor,
+		hoveredButtonColor,
+		mainFont15,
+		CENTER, CENTER);
 
 	cancelButton.visible = false;
 	confirmButton.visible = false;
@@ -263,6 +270,30 @@ int main(int argc, char* argv[]) {
 
 		SDL_StopTextInput();
 	});
+
+	shuffleButton.setAction([&]() {
+		std::vector<std::string> texts;
+		for (const auto& button : studentBtns.buttons) {
+			std::visit([&](auto& btn) {
+				if constexpr (std::is_same_v<std::decay_t<decltype(btn)>, textButton>) {
+					texts.push_back(btn.text);
+				}
+			}, button);
+		}
+
+		std::random_device rd;
+		std::mt19937 g(rd());
+		std::shuffle(texts.begin(), texts.end(), g);
+
+		for (size_t i = 0; i < studentBtns.buttons.size(); ++i) {
+			std::visit([&](auto& btn) {
+				if constexpr (std::is_same_v<std::decay_t<decltype(btn)>, textButton>) {
+					btn.text = texts[i];
+					btn.loadText(mainRenderer);
+				}			
+			}, studentBtns.buttons[i]);
+		}
+	});
 	
 	studentBtns.loadAllText(mainRenderer);
 	applyButton.loadText(mainRenderer);
@@ -270,6 +301,7 @@ int main(int argc, char* argv[]) {
 	loadConfButton.loadText(mainRenderer);
 	confirmButton.loadText(mainRenderer);
 	cancelButton.loadText(mainRenderer);
+	shuffleButton.loadText(mainRenderer);
 
 	applyButton.toggleActive(false);
 
@@ -287,6 +319,7 @@ int main(int argc, char* argv[]) {
 			saveLoadName.handleEvent(e);
 			confirmButton.handleEvents(e);
 			cancelButton.handleEvents(e);
+			shuffleButton.handleEvents(e);
 		}
 		
 		SDL_SetRenderDrawColor(mainRenderer, windowColor.r, windowColor.g, windowColor.b, windowColor.a);
@@ -301,6 +334,7 @@ int main(int argc, char* argv[]) {
 		savePromptLabel.render(mainRenderer);
 		confirmButton.render(mainRenderer);
 		cancelButton.render(mainRenderer);
+		shuffleButton.render(mainRenderer);
 
 		for (auto& boxes : labelBoxes) {
 			for (auto& box : boxes) {
