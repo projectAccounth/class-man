@@ -36,6 +36,9 @@
     <ClInclude Include="include\studentInfo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\nameLocalization.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\program.cpp">
@@ -63,6 +66,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\studentInfo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\nameLocalization.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

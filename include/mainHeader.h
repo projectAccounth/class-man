@@ -19,6 +19,7 @@
 #include <string>
 #include <cstring>
 #include <cstdlib>
+#include <cctype>
 #include <vector>
 #include <functional>
 #include <variant>
@@ -26,10 +27,11 @@
 #include <fstream>
 #include <algorithm>
 #include <random>
+#include <sstream>
 
 const int tableRows = 4, tableColumns = 4;
 const int tbSize = 60;
-const int students = 30;
+const int studentsCount = 30;
 
 const SDL_Color defaultButtonColor(177, 177, 177, 255);
 const SDL_Color hoveredButtonColor(122, 122, 122, 255);

@@ -1,4 +1,5 @@
 #include "../include/studentInfo.h"
+#include "../include/nameLocalization.h"
 
 std::string sanitizeFileName(const std::string& filename, const std::string& defaultExt) {
 	const std::string invalidChars = R"(\ / : * ? " < > |)";
@@ -26,7 +27,7 @@ std::string sanitizeFileName(const std::string& filename, const std::string& def
 
 
 
-void saveStudentDataBinary(std::vector<Student> students, const std::string& filename) {
+void saveStudentDataBinary(std::vector<Student>& students, const std::string& filename) {
 	std::string finalFileName = sanitizeFileName(filename, ".txt");
 	std::fstream outFile(finalFileName.c_str(), std::ios::binary | std::ios::out | std::ios::trunc); // Open in binary append mode
 	if (!outFile.is_open()) {
@@ -35,15 +36,15 @@ void saveStudentDataBinary(std::vector<Student> students, const std::string& fil
 		return;
 	}
 	for (auto& student : students) {
-		size_t nameLength = student.name.size();
+		size_t nameLength = student.fullName.size();
 		outFile.write(reinterpret_cast<char*>(&nameLength), sizeof(nameLength)); // Write name length
-		outFile.write(student.name.c_str(), nameLength); // Write name
+		outFile.write(student.fullName.c_str(), nameLength); // Write name
 		outFile.write(reinterpret_cast<const char*>(&student.number), sizeof(student.number)); // Write number
 	}
 	outFile.close();
 }
 
-void readStudentDataBinary(const std::string& filename, buttonManager& stdBtnLst, SDL_Renderer* renderer) {
+void readStudentDataBinary(const std::string& filename, buttonManager& stdBtnLst, SDL_Renderer* renderer, std::vector<Student>& students) {
 	std::string finalFileName = sanitizeFileName(filename, ".txt");
 	std::ifstream inFile(finalFileName, std::ios::binary);
 	if (!inFile.is_open()) {
@@ -51,21 +52,26 @@ void readStudentDataBinary(const std::string& filename, buttonManager& stdBtnLst
 		return;
 	}
 
+	students.clear();
+
 	size_t nameLength;
 	while (inFile.read(reinterpret_cast<char*>(&nameLength), sizeof(nameLength))) {
-		std::string name(nameLength, ' ');
-		inFile.read(&name[0], nameLength); // Read name
-		if (!inFile) break; // Ensure name read was successful
+		std::string fullName(nameLength, ' ');
+		inFile.read(&fullName[0], nameLength);
+		if (!inFile) break;
 
 		int number;
-		inFile.read(reinterpret_cast<char*>(&number), sizeof(number)); // Read number
-		if (!inFile) break; // Ensure number read was successful
+		inFile.read(reinterpret_cast<char*>(&number), sizeof(number));
+		if (!inFile) break;
 
+		std::string abbrName = abbreviateName(fullName, true);
+
+		students.push_back({ abbrName, fullName, number });
 		for (auto& button : stdBtnLst.buttons) {
 			std::visit([&](auto& btn) {
 				if constexpr (std::is_same_v<std::decay_t<decltype(btn)>, textButton>) {
 					if (btn.id == number) {
-						btn.text = name;
+						btn.text = abbrName;
 						btn.loadText(renderer);
 					}
 				}

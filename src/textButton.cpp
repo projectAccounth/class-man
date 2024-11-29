@@ -83,6 +83,10 @@ void textButton::setAction(std::function<void()> actionFunction) {
     buttonAction = actionFunction;
 }
 
+void textButton::setHoverAction(std::function<void()> actionFunction) {
+    hoverAction = actionFunction;
+}
+
 bool textButton::isClicked(int x, int y) {
     return (x > buttonRect.x &&
         x < (buttonRect.x + buttonRect.w) &&
@@ -107,7 +111,10 @@ void textButton::handleEvents(SDL_Event& e) {
     if (e.type == SDL_MOUSEMOTION || e.type == SDL_MOUSEBUTTONDOWN && active) {
         if (x > buttonRect.x && x < (buttonRect.x + buttonRect.w) &&
             y > buttonRect.y && y < (buttonRect.y + buttonRect.h)) {
-            hovered = true; 
+            hovered = true;
+            if (hoverAction) {
+                hoverAction();
+            }
         }
         else {
             hovered = false;

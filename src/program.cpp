@@ -1,9 +1,7 @@
 #include "../include/program.h"
 #include "../include/mainHeader.h"
 
-// Definition of the createRenderer() function
 SDL_Renderer* Program::createRenderer(SDL_Window *targetWindow) {
-	// The SDL_Renderer that will be returned
 	return SDL_CreateRenderer(targetWindow, -1, SDL_RENDERER_PRESENTVSYNC);
 }
 
@@ -45,7 +43,6 @@ void Program::programControls() {
 
 bool Program::processEvent(SDL_Event event) {
 	bool isRunning = true;
-	// Polling event
 	switch (event.type) {
 		case SDL_WINDOWEVENT_CLOSE: {
 			isRunning = false;

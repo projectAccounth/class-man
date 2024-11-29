@@ -40,6 +40,10 @@ void imageButton::setAction(std::function<void()> actionFunction) {
     buttonAction = actionFunction;
 }
 
+void imageButton::setHoverAction(std::function<void()> actionFunction) {
+    hoverAction = actionFunction;
+}
+
 bool imageButton::isClicked(int x, int y) {
     return (x > buttonRect.x &&
         x < (buttonRect.x + buttonRect.w) &&
@@ -66,6 +70,9 @@ void imageButton::handleEvents(SDL_Event& e) {
         if (x > buttonRect.x && x < (buttonRect.x + buttonRect.w) &&
             y > buttonRect.y && y < (buttonRect.y + buttonRect.h)) {
             hovered = true;
+            if (hoverAction) {
+                hoverAction();
+            }
         }
         else {
             hovered = false;

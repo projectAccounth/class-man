@@ -6,6 +6,7 @@
 #include "../include/buttonManager.h"
 #include "../include/program.h"
 #include "../include/studentInfo.h"
+#include "../include/nameLocalization.h"
 
 int activeButtonId;
 int activeSLFlag = 0;
@@ -28,10 +29,15 @@ buttonManager studentBtns;
 
 std::vector<std::vector<stTable2>> tables(tableColumns);
 std::vector <std::vector<textBox>> labelBoxes(tableColumns);
+std::vector<Student> students;
 
 int main(int argc, char* argv[]) {
 
-	int tableCount = students / 2;
+	for (int i = 0; i < studentsCount; i++) {
+		students.push_back({ "None", "None", i });
+	}
+
+	int tableCount = studentsCount / 2;
 
 	Program program;
 
@@ -59,6 +65,11 @@ int main(int argc, char* argv[]) {
 		SDL_Color(177, 177, 177, 0), "Name for the save:",
 		defaultTextColor,
 		mainFont15, LEFT, CENTER);
+
+	textBox nameLabel(SDL_Rect(WINDOW_WIDTH - 200 - 50 - 10, WINDOW_HEIGHT - 70, 240, 30),
+		SDL_Color(177, 177, 177, 0), "Name: None",
+		defaultTextColor,
+		mainFont15, LEFT, LEFT);
 
 	saveLoadName.toggleVisibility(false);
 	savePromptLabel.toggleVisibility(false);
@@ -148,6 +159,12 @@ int main(int argc, char* argv[]) {
 				SDL_StartTextInput();
 				std::cout << btn.id << '\n';
 			});
+			btn.setHoverAction([&]() {
+				for (int i = 0; i < studentsCount; i++) {
+					if (i != btn.id) continue;
+					nameLabel.text = "Name: " + students[i].fullName;
+				}
+			});
 		}, button);
 	}
 
@@ -156,7 +173,9 @@ int main(int argc, char* argv[]) {
 			std::visit([&](auto& btn) {
 				if constexpr (std::is_same_v<std::decay_t<decltype(btn)>, textButton>) {
 					if (btn.id != activeButtonId) return;
-					btn.text = nameEnterBox.text;
+					students[btn.id] = { abbreviateName(nameEnterBox.text, true), nameEnterBox.text, btn.id };
+					btn.text = abbreviateName(nameEnterBox.text, true);
+					std::cout << students[btn.id].name << std::endl;
 					btn.loadText(mainRenderer);
 					nameEnterBox.reset();
 					nameEnterBox.editable = false;
@@ -205,7 +224,7 @@ int main(int argc, char* argv[]) {
 		for (auto& button : studentBtns.buttons) {
 			std::visit([&](auto& btn) {
 				btn.active = false;
-				}, button);
+			}, button);
 		}
 		saveConfButton.active = false;
 		loadConfButton.active = false;
@@ -225,7 +244,7 @@ int main(int argc, char* argv[]) {
 		for (auto& button : studentBtns.buttons) {
 			std::visit([&](auto& btn) {
 				btn.active = true;
-				}, button);
+			}, button);
 		}
 		saveConfButton.active = true;
 		loadConfButton.active = true;
@@ -241,24 +260,20 @@ int main(int argc, char* argv[]) {
 		cancelButton.toggleVisiblility(false);
 		saveLoadName.toggleVisibility(false);
 		savePromptLabel.toggleVisibility(false);
-		std::vector<Student> studentList;
 		for (auto& button : studentBtns.buttons) {
 			std::visit([&](auto& btn) {
 				btn.active = true;
-				if constexpr (std::is_same_v<std::decay_t<decltype(btn)>, textButton>) {
-					studentList.push_back({btn.text, btn.id});
-				}
 			}, button);
 		}
 		switch (activeSLFlag) {
 		// For saving operation
 		case 1:
-			saveStudentDataBinary(studentList, saveLoadName.text);
+			saveStudentDataBinary(students, saveLoadName.text);
 			break;
 
 		// For loading operation
 		case 2:
-			readStudentDataBinary(saveLoadName.text, studentBtns, mainRenderer);
+			readStudentDataBinary(saveLoadName.text, studentBtns, mainRenderer, students);
 			break;
 		}
 		activeSLFlag = 0;
@@ -272,26 +287,23 @@ int main(int argc, char* argv[]) {
 	});
 
 	shuffleButton.setAction([&]() {
-		std::vector<std::string> texts;
-		for (const auto& button : studentBtns.buttons) {
-			std::visit([&](auto& btn) {
-				if constexpr (std::is_same_v<std::decay_t<decltype(btn)>, textButton>) {
-					texts.push_back(btn.text);
-				}
-			}, button);
-		}
-
 		std::random_device rd;
 		std::mt19937 g(rd());
-		std::shuffle(texts.begin(), texts.end(), g);
+		std::shuffle(students.begin(), students.end(), g);
 
-		for (size_t i = 0; i < studentBtns.buttons.size(); ++i) {
+		for (auto& button : studentBtns.buttons) {
 			std::visit([&](auto& btn) {
 				if constexpr (std::is_same_v<std::decay_t<decltype(btn)>, textButton>) {
-					btn.text = texts[i];
-					btn.loadText(mainRenderer);
-				}			
-			}, studentBtns.buttons[i]);
+					for (size_t i = 0; i < students.size(); ++i) {
+						if (students[i].number == btn.id) {
+							btn.text = students[i].name;
+							students[i].number = btn.id;
+							btn.loadText(mainRenderer);
+							continue;
+						}
+					}
+				}
+			}, button);
 		}
 	});
 	
@@ -320,6 +332,18 @@ int main(int argc, char* argv[]) {
 			confirmButton.handleEvents(e);
 			cancelButton.handleEvents(e);
 			shuffleButton.handleEvents(e);
+
+			bool chkHvr = false;
+			int chkInd = 0;
+			for (auto& button : studentBtns.buttons) {
+				std::visit([&](auto& btn) {
+					if (btn.hovered) { chkHvr = true;  return; }
+					chkInd++;
+					if (chkInd == studentsCount)
+						nameLabel.text = "Name: None";
+				}, button);
+				if (chkHvr) break;
+			}
 		}
 		
 		SDL_SetRenderDrawColor(mainRenderer, windowColor.r, windowColor.g, windowColor.b, windowColor.a);
@@ -335,6 +359,7 @@ int main(int argc, char* argv[]) {
 		confirmButton.render(mainRenderer);
 		cancelButton.render(mainRenderer);
 		shuffleButton.render(mainRenderer);
+		nameLabel.render(mainRenderer);
 
 		for (auto& boxes : labelBoxes) {
 			for (auto& box : boxes) {

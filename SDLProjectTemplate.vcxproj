@@ -186,6 +186,7 @@
     <ClInclude Include="include\buttonManager.h" />
     <ClInclude Include="include\image.h" />
     <ClInclude Include="include\mainHeader.h" />
+    <ClInclude Include="include\nameLocalization.h" />
     <ClInclude Include="include\program.h" />
     <ClInclude Include="include\textBox.h" />
     <ClInclude Include="include\studentInfo.h" />
@@ -195,6 +196,7 @@
     <ClCompile Include="src\buttonManager.cpp" />
     <ClCompile Include="src\image.cpp" />
     <ClCompile Include="src\imageButton.cpp" />
+    <ClCompile Include="src\nameLocalization.cpp" />
     <ClCompile Include="src\studentInfo.cpp" />
     <ClCompile Include="src\textButton.cpp" />
     <ClCompile Include="src\main.cpp" />
