@@ -66,7 +66,7 @@ void imageButton::handleEvents(SDL_Event& e) {
     SDL_PumpEvents();
     SDL_GetMouseState(&x, &y);
 
-    if (e.type == SDL_MOUSEMOTION || e.type == SDL_MOUSEBUTTONDOWN && active) {
+    if (e.type == SDL_MOUSEMOTION || e.type == SDL_MOUSEBUTTONDOWN && active && visible) {
         if (x > buttonRect.x && x < (buttonRect.x + buttonRect.w) &&
             y > buttonRect.y && y < (buttonRect.y + buttonRect.h)) {
             hovered = true;

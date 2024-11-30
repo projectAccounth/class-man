@@ -33,9 +33,9 @@ const int tableRows = 4, tableColumns = 4;
 const int tbSize = 60;
 const int studentsCount = 30;
 
-const SDL_Color defaultButtonColor(177, 177, 177, 255);
-const SDL_Color hoveredButtonColor(122, 122, 122, 255);
-const SDL_Color defaultTextColor(0, 0, 0, 255);
+const SDL_Color defaultButtonColor = SDL_Color{ 177, 177, 177, 255 };
+const SDL_Color hoveredButtonColor = SDL_Color{ 122, 122, 122, 255 };
+const SDL_Color defaultTextColor = SDL_Color{ 0, 0, 0, 255 };
 
 enum textAlign {
     LEFT,

@@ -47,27 +47,36 @@ int main(int argc, char* argv[]) {
 	mainWindow = program.createWindow(WINDOW_HEIGHT, WINDOW_WIDTH, 0, "Program");
 	mainRenderer = program.createRenderer(mainWindow);
 
+	bool helpWindowPresent = false;
+	SDL_Window* helpWindow = nullptr;
+	SDL_Renderer* helpWindowRenderer = nullptr;
+
 	SDL_SetRenderDrawBlendMode(mainRenderer, SDL_BLENDMODE_BLEND);
 
 	TTF_Font* mainFont15 = TTF_OpenFont("./res/fonts/mssan-serif.ttf", 15);
 
-	editableTextBox nameEnterBox(SDL_Rect(WINDOW_WIDTH - 200, WINDOW_HEIGHT - 40, 180, 30),
-		SDL_Color(177, 177, 177, 188), "",
+	editableTextBox nameEnterBox(SDL_Rect{ WINDOW_WIDTH - 200, WINDOW_HEIGHT - 40, 180, 30 },
+		SDL_Color{ 177, 177, 177, 188 }, "",
 		defaultTextColor,
 		mainFont15, LEFT, CENTER, false);
 
-	editableTextBox saveLoadName(SDL_Rect(80 + 50 + 10, WINDOW_HEIGHT - 40, 180, 30),
-		SDL_Color(177, 177, 177, 188), "",
+	editableTextBox saveLoadName(SDL_Rect{ 80 + 50 + 10, WINDOW_HEIGHT - 40, 180, 30 },
+		SDL_Color{ 177, 177, 177, 188 }, "",
 		defaultTextColor,
 		mainFont15, LEFT, CENTER, false);
 
-	textBox savePromptLabel(SDL_Rect(80 + 50 + 10, WINDOW_HEIGHT - 70, 180, 30),
-		SDL_Color(177, 177, 177, 0), "Name for the save:",
+	textBox savePromptLabel(SDL_Rect{ 80 + 50 + 10, WINDOW_HEIGHT - 70, 180, 30 },
+		SDL_Color{ 177, 177, 177, 0 }, "Name for the save:",
 		defaultTextColor,
 		mainFont15, LEFT, CENTER);
 
-	textBox nameLabel(SDL_Rect(WINDOW_WIDTH - 200 - 50 - 10, WINDOW_HEIGHT - 70, 240, 30),
-		SDL_Color(177, 177, 177, 0), "Name: None",
+	textBox nameLabel(SDL_Rect{ WINDOW_WIDTH - 200 - 50 - 10, WINDOW_HEIGHT - 70, 240, 30 },
+		SDL_Color{ 177, 177, 177, 0 }, "Name: None",
+		defaultTextColor,
+		mainFont15, LEFT, LEFT);
+	
+	textBox helpBox(SDL_Rect{ 0, 0, 500, 200 }, SDL_Color{ 255, 255, 255, 255 },
+		"To load/save the file with the specified name:\n\nSaving: the output file is put in the current working directory of the program.\n\nLoading the file requires the file to be put in the same directory as the program executable.\n\nWith file names, if you only type the name only, the file extension will be automatically specified as \"txt\". If you want extensions other than .txt, you can choose to save the file with ANY extension, but to load them, you will be required to enter the name and the EXACT extension of the file.",
 		defaultTextColor,
 		mainFont15, LEFT, LEFT);
 
@@ -92,8 +101,8 @@ int main(int argc, char* argv[]) {
 	for (int i = 0; i < tableColumns; ++i) {
 		for (int j = 0; j < tableRows; ++j) {
 			if (j == tableRows - 1 && i == 0) continue;
-			labelBoxes[j].push_back(textBox(SDL_Rect(tbSize * (3 * i + 1), tbSize * 2 * j, tbSize * 2 + 10, tbSize),
-				SDL_Color(177, 177, 177, 0), std::to_string(cntr),
+			labelBoxes[j].push_back(textBox(SDL_Rect{ tbSize * (3 * i + 1), tbSize * 2 * j, tbSize * 2 + 10, tbSize },
+				SDL_Color{ 177, 177, 177, 0 }, std::to_string(cntr),
 				defaultTextColor,
 				mainFont15, CENTER, CENTER));
 			cntr++;
@@ -145,9 +154,17 @@ int main(int argc, char* argv[]) {
 		mainFont15,
 		CENTER, CENTER);
 
+	textButton helpButton(180 + 80 + 20, WINDOW_HEIGHT - 70,
+		20, 20,
+		defaultButtonColor,
+		"?", defaultTextColor,
+		hoveredButtonColor,
+		mainFont15,
+		CENTER, CENTER);
+
 	cancelButton.visible = false;
 	confirmButton.visible = false;
-
+	helpButton.visible = false;
 
 	for (auto& button : studentBtns.buttons) {
 		std::visit([&](auto& btn) {
@@ -158,6 +175,10 @@ int main(int argc, char* argv[]) {
 				nameEnterBox.editable = true;
 				SDL_StartTextInput();
 				std::cout << btn.id << '\n';
+				if constexpr (std::is_same_v<std::decay_t<decltype(btn)>, textButton>) {
+					btn.buttonColor = SDL_Color{ 126, 244, 126, 255 };
+					btn.hoverColor = SDL_Color{ 110, 222, 110, 255 };
+				}
 			});
 			btn.setHoverAction([&]() {
 				for (int i = 0; i < studentsCount; i++) {
@@ -176,6 +197,8 @@ int main(int argc, char* argv[]) {
 					students[btn.id] = { abbreviateName(nameEnterBox.text, true), nameEnterBox.text, btn.id };
 					btn.text = abbreviateName(nameEnterBox.text, true);
 					std::cout << students[btn.id].name << std::endl;
+					btn.buttonColor = defaultButtonColor;
+					btn.hoverColor = hoveredButtonColor;
 					btn.loadText(mainRenderer);
 					nameEnterBox.reset();
 					nameEnterBox.editable = false;
@@ -204,6 +227,7 @@ int main(int argc, char* argv[]) {
 		}
 		saveConfButton.active = false;
 		loadConfButton.active = false;
+		helpButton.visible = true;
 
 		saveLoadName.reset();
 		saveLoadName.editable = true;
@@ -228,6 +252,7 @@ int main(int argc, char* argv[]) {
 		}
 		saveConfButton.active = false;
 		loadConfButton.active = false;
+		helpButton.visible = true;
 
 		saveLoadName.reset();
 		saveLoadName.editable = true;
@@ -244,10 +269,15 @@ int main(int argc, char* argv[]) {
 		for (auto& button : studentBtns.buttons) {
 			std::visit([&](auto& btn) {
 				btn.active = true;
+				if constexpr (std::is_same_v<std::decay_t<decltype(btn)>, textButton>) {
+					btn.buttonColor = defaultButtonColor;
+					btn.hoverColor = hoveredButtonColor;
+				}
 			}, button);
 		}
 		saveConfButton.active = true;
 		loadConfButton.active = true;
+		helpButton.visible = false;
 
 		saveLoadName.reset();
 		saveLoadName.editable = false;
@@ -279,6 +309,7 @@ int main(int argc, char* argv[]) {
 		activeSLFlag = 0;
 		saveConfButton.active = true;
 		loadConfButton.active = true;
+		helpButton.visible = false;
 
 		saveLoadName.reset();
 		saveLoadName.editable = false;
@@ -306,6 +337,21 @@ int main(int argc, char* argv[]) {
 			}, button);
 		}
 	});
+
+	helpButton.setAction([&]() {
+		if (!helpWindowPresent) {
+			helpWindowPresent = true;
+			helpWindow = program.createWindow(200, 500, false, "Help");
+			helpWindowRenderer = program.createRenderer(helpWindow);
+		}
+		else {
+			SDL_DestroyWindow(helpWindow);
+			SDL_DestroyRenderer(helpWindowRenderer);
+			helpWindow = nullptr;
+			helpWindowRenderer = nullptr;
+			helpWindowPresent = false;
+		}
+	});
 	
 	studentBtns.loadAllText(mainRenderer);
 	applyButton.loadText(mainRenderer);
@@ -314,6 +360,7 @@ int main(int argc, char* argv[]) {
 	confirmButton.loadText(mainRenderer);
 	cancelButton.loadText(mainRenderer);
 	shuffleButton.loadText(mainRenderer);
+	helpButton.loadText(mainRenderer);
 
 	applyButton.toggleActive(false);
 
@@ -322,7 +369,26 @@ int main(int argc, char* argv[]) {
 	while (isRunning) {
 		SDL_Event e;
 		while (SDL_PollEvent(&e)) {
-			isRunning = program.processEvent(e);
+			switch (e.type) {
+			case SDL_WINDOWEVENT: {
+				if (e.window.event == SDL_WINDOWEVENT_CLOSE) {
+					if (e.window.windowID == SDL_GetWindowID(mainWindow))
+						isRunning = false;
+					else if (e.window.windowID == SDL_GetWindowID(helpWindow)) {
+						SDL_DestroyWindow(helpWindow);
+						SDL_DestroyRenderer(helpWindowRenderer);
+						helpWindow = nullptr;
+						helpWindowRenderer = nullptr;
+						helpWindowPresent = false;
+					}
+				}
+				break;
+			}
+			case SDL_QUIT: {
+				isRunning = false;
+				break;
+			}
+			}
 			studentBtns.handleAllEvent(e);
 			nameEnterBox.handleEvent(e);
 			applyButton.handleEvents(e);
@@ -332,6 +398,7 @@ int main(int argc, char* argv[]) {
 			confirmButton.handleEvents(e);
 			cancelButton.handleEvents(e);
 			shuffleButton.handleEvents(e);
+			helpButton.handleEvents(e);
 
 			bool chkHvr = false;
 			int chkInd = 0;
@@ -360,6 +427,14 @@ int main(int argc, char* argv[]) {
 		cancelButton.render(mainRenderer);
 		shuffleButton.render(mainRenderer);
 		nameLabel.render(mainRenderer);
+		helpButton.render(mainRenderer);
+		if (helpWindowRenderer) {
+			SDL_SetRenderDrawColor(helpWindowRenderer, windowColor.r, windowColor.g, windowColor.b, windowColor.a);
+			SDL_RenderClear(helpWindowRenderer);
+			helpBox.render(helpWindowRenderer);
+			SDL_RenderPresent(helpWindowRenderer);
+		}
+
 
 		for (auto& boxes : labelBoxes) {
 			for (auto& box : boxes) {
@@ -369,6 +444,8 @@ int main(int argc, char* argv[]) {
 
 		SDL_RenderPresent(mainRenderer);
 	}
+	if (helpWindow) SDL_DestroyWindow(helpWindow);
+	if (helpWindowRenderer) SDL_DestroyRenderer(helpWindowRenderer);
 	program.onQuit(mainWindow, mainRenderer);
 
 	return 0;
