@@ -165,17 +165,25 @@ int main(int argc, char* argv[]) {
 	cancelButton.visible = false;
 	confirmButton.visible = false;
 	helpButton.visible = false;
-
+	
 	for (auto& button : studentBtns.buttons) {
 		std::visit([&](auto& btn) {
 			btn.setAction([&]() {
-				activeButtonId = btn.id;
-				applyButton.toggleActive(true);
-				nameEnterBox.reset();
-				nameEnterBox.editable = true;
-				SDL_StartTextInput();
-				std::cout << btn.id << '\n';
 				if constexpr (std::is_same_v<std::decay_t<decltype(btn)>, textButton>) {
+					for (auto& b : studentBtns.buttons) {
+						std::visit([&](auto& bhn) {
+							bhn.setAction([&]() {
+								btn.buttonColor = defaultButtonColor;
+								btn.hoverColor = hoveredButtonColor;
+								});
+						}, b);
+					}
+					activeButtonId = btn.id;
+					applyButton.toggleActive(true);
+					nameEnterBox.reset();
+					nameEnterBox.editable = true;
+					SDL_StartTextInput();
+					std::cout << btn.id << '\n';
 					btn.buttonColor = SDL_Color{ 126, 244, 126, 255 };
 					btn.hoverColor = SDL_Color{ 110, 222, 110, 255 };
 				}
