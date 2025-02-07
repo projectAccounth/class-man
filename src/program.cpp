@@ -13,7 +13,10 @@ SDL_Window* Program::createWindow(int height, int width, bool isFullScreen, cons
 		width, height, 0);
 
 	if (targetWindow == NULL) {
-		std::cout << ("Could not create window: %s\n", SDL_GetError());
+		LogMessage(
+			std::wstring(L"Could not create window: %s\n") + std::wstring(towchar(SDL_GetError())),
+			LOGF_NAME
+		);
 		exit(1);
 	}
 	

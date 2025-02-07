@@ -31,8 +31,10 @@ void saveStudentDataBinary(std::vector<Student>& students, const std::string& fi
 	std::string finalFileName = sanitizeFileName(filename, ".txt");
 	std::fstream outFile(finalFileName.c_str(), std::ios::binary | std::ios::out | std::ios::trunc); // Open in binary append mode
 	if (!outFile.is_open()) {
-		std::cerr << "Name: " << finalFileName << '\n';
-		std::cerr << "Unable to open file for writing.\n";
+		LogMessage(
+			std::wstring(L"Unable to open file ") + towchar(finalFileName.c_str()) + L" for writing.",
+			LOGF_NAME
+		);
 		return;
 	}
 	for (auto& student : students) {
@@ -44,7 +46,12 @@ void saveStudentDataBinary(std::vector<Student>& students, const std::string& fi
 	outFile.close();
 }
 
-void readStudentDataBinary(const std::string& filename, buttonManager& stdBtnLst, SDL_Renderer* renderer, std::vector<Student>& students) {
+void readStudentDataBinary(
+	const std::string& filename,
+	ButtonManager& stdBtnLst,
+	SDL_Renderer* renderer,
+	std::vector<Student>& students
+) {
 	std::string finalFileName = sanitizeFileName(filename, ".txt");
 	std::ifstream inFile(finalFileName, std::ios::binary);
 	if (!inFile.is_open()) {
@@ -55,27 +62,37 @@ void readStudentDataBinary(const std::string& filename, buttonManager& stdBtnLst
 	students.clear();
 
 	size_t nameLength;
-	while (inFile.read(reinterpret_cast<char*>(&nameLength), sizeof(nameLength))) {
-		std::string fullName(nameLength, ' ');
-		inFile.read(&fullName[0], nameLength);
-		if (!inFile) break;
+	while (true) {
+		size_t nameLength;
 
+		if (!inFile.read(reinterpret_cast<char*>(&nameLength), sizeof(nameLength))) { inFile.close(); return; }
+
+		std::string fullName;
+		try {
+			fullName = std::string(nameLength, '\0');
+		}
+		catch (const std::exception& e) {
+			LogMessage(
+				L"Error: Corrupted/unsupported type format",
+				LOGF_NAME
+			);
+		}
+		if (!inFile.read(&fullName[0], nameLength)) { inFile.close(); return; }
+		
 		int number;
-		inFile.read(reinterpret_cast<char*>(&number), sizeof(number));
-		if (!inFile) break;
+		if (!inFile.read(reinterpret_cast<char*>(&number), sizeof(number))) { inFile.close(); return; }
 
 		std::string abbrName = abbreviateName(fullName, true);
 
 		students.push_back({ abbrName, fullName, number });
 		for (auto& button : stdBtnLst.buttons) {
-			std::visit([&](auto& btn) {
-				if constexpr (std::is_same_v<std::decay_t<decltype(btn)>, textButton>) {
-					if (btn.id == number) {
-						btn.text = abbrName;
-						btn.loadText(renderer);
-					}
-				}
-			}, button);
+			if (std::get<TextButton>(button).getId() != number) continue;
+			std::get<TextButton>(button).text = abbrName;
+			std::get<TextButton>(button).loadText(renderer);
 		}
 	}
+	LogMessage(
+		std::wstring(L"Successfully read data from ") + towchar(filename.c_str()),
+		LOGF_NAME
+	);
 }

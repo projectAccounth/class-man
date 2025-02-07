@@ -1,35 +1,90 @@
 // C++ SDL2 Template for Visual Studio 2022
 
 #include "../include/mainHeader.h"
-#include "../include/button.h"
-#include "../include/textBox.h"
-#include "../include/buttonManager.h"
 #include "../include/program.h"
 #include "../include/studentInfo.h"
 #include "../include/nameLocalization.h"
 
-int activeButtonId;
+int activeButtonId = -1;
 int activeSLFlag = 0;
 
 SDL_Window* mainWindow = NULL;
 SDL_Renderer* mainRenderer = NULL;
+
+static std::random_device rd;
+static std::mt19937 g(rd());
 
 // window's color, change please
 SDL_Color windowColor = {255, 255, 255 ,255};
 
 // A table for 2 students, left -> right
 typedef struct stTable2 {
-	textButton s1, s2;
-	stTable2(int x0, int y0, const char* s1n, const char* s2n, TTF_Font* f, int tableSize) :
-		s1(textButton(x0, y0, tableSize, tableSize, defaultButtonColor, s1n, defaultTextColor, hoveredButtonColor, f, CENTER, CENTER)),
-		s2(textButton(x0 + tableSize + 3, y0, tableSize, tableSize, defaultButtonColor, s2n, defaultTextColor, hoveredButtonColor, f, CENTER, CENTER)) {}
+	TextButton s1, s2;
+	stTable2(double x0, double y0, double tableSize, TTF_Font* f, SDL_Renderer*& renderer, const char* s1n, const char* s2n) :
+		s1(TextButton(
+			{ tableSize, tableSize, false },
+			{ x0, y0, false },
+			std::nullopt,
+			renderer,
+			defaultButtonColor,
+			hoveredButtonColor,
+			defaultTextColor,
+			s1n, f
+		)),
+		s2(TextButton(
+			{ tableSize, tableSize, false },
+			{ x0 + tableSize + 3, y0, false },
+			std::nullopt,
+			renderer,
+			defaultButtonColor,
+			hoveredButtonColor,
+			defaultTextColor,
+			s2n, f
+		)) {}
 } stTable2;
 
-buttonManager studentBtns;
+ButtonManager studentBtns;
 
 std::vector<std::vector<stTable2>> tables(tableColumns);
-std::vector <std::vector<textBox>> labelBoxes(tableColumns);
+std::vector <std::vector<TextBox>> labelBoxes(tableColumns);
 std::vector<Student> students;
+auto helpText = R"(
+To load/save the file with the specified name:
+
+Saving: the output file is put in the current working directory of the program.
+
+Loading the file requires the file to be put in the same directory as the program executable.
+
+With file names, if you only type the name only, the file extension will be automatically specified as "txt". If you want extensions other than .txt, you can choose to save the file with ANY extension, but to load them, you will be required to enter the name a
+nd the EXACT extension of the file.
+)";
+
+void setButtonAction(
+	TextButton& btn,
+	TextButton& applyButton,
+	EditableTextBox& nameEnterBox,
+	TextBox& nameLabel
+) {
+	btn.setAction([&]() {
+		for (auto& b : studentBtns.buttons) {
+			std::get<TextButton>(b).changeButtonColor(defaultButtonColor, mainRenderer);
+			std::get<TextButton>(b).changeHoverColor(hoveredButtonColor, mainRenderer);
+		}
+		activeButtonId = btn.getId();
+		applyButton.toggleActive(true);
+		nameEnterBox.reset();
+		nameEnterBox.editable = true;
+		SDL_StartTextInput();
+		btn.changeButtonColor({ 126, 244, 126, 255 }, mainRenderer);
+		btn.changeHoverColor({ 110, 222, 110, 255 }, mainRenderer);
+		});
+	btn.setHoverAction([&]() {
+		for (int i = 0; i < studentsCount; i++) {
+			if (i != btn.getId()) continue;
+			nameLabel.text = "Name: " + students[i].fullName;
+		}
+	});
+}
 
 int main(int argc, char* argv[]) {
 
@@ -55,39 +110,75 @@ int main(int argc, char* argv[]) {
 
 	TTF_Font* mainFont15 = TTF_OpenFont("./res/fonts/mssan-serif.ttf", 15);
 
-	editableTextBox nameEnterBox(SDL_Rect{ WINDOW_WIDTH - 200, WINDOW_HEIGHT - 40, 180, 30 },
-		SDL_Color{ 177, 177, 177, 188 }, "",
+	EditableTextBox nameEnterBox(
+		{ 180, 30, false },
+		{ WINDOW_WIDTH - 200, WINDOW_HEIGHT - 40, false },
+		std::nullopt,
+		mainRenderer,
+		{ 177, 177, 177, 188 },
 		defaultTextColor,
-		mainFont15, LEFT, CENTER, false);
+		mainFont15,
+		LEFT
+	);
 
-	editableTextBox saveLoadName(SDL_Rect{ 80 + 50 + 10, WINDOW_HEIGHT - 40, 180, 30 },
-		SDL_Color{ 177, 177, 177, 188 }, "",
+	EditableTextBox saveLoadName(
+		{ 180, 30, false },
+		{ 145, WINDOW_HEIGHT - 40 },
+		std::nullopt,
+		mainRenderer,
+		SDL_Color{ 177, 177, 177, 188 },
 		defaultTextColor,
-		mainFont15, LEFT, CENTER, false);
+		mainFont15,
+		LEFT
+	);
 
-	textBox savePromptLabel(SDL_Rect{ 80 + 50 + 10, WINDOW_HEIGHT - 70, 180, 30 },
-		SDL_Color{ 177, 177, 177, 0 }, "Name for the save:",
+	TextBox savePromptLabel(
+		{ 180.0, 30.0, false },
+		{ 140.0, WINDOW_HEIGHT - 70.0, false },
+		std::nullopt,
+		mainRenderer,
+		{ 177, 177, 177, 0 },
+		"Name for the save:",
 		defaultTextColor,
-		mainFont15, LEFT, CENTER);
+		mainFont15,
+		LEFT, CENTER
+	);
 
-	textBox nameLabel(SDL_Rect{ WINDOW_WIDTH - 200 - 50 - 10, WINDOW_HEIGHT - 70, 240, 30 },
-		SDL_Color{ 177, 177, 177, 0 }, "Name: None",
+	TextBox nameLabel(
+		{ 240, 30, false },
+		{ WINDOW_WIDTH - 260, WINDOW_HEIGHT - 70, false },
+		std::nullopt,
+		mainRenderer,
+		{ 177, 177, 177, 0 },
+		"Name: None",
 		defaultTextColor,
-		mainFont15, LEFT, LEFT);
-	
-	textBox helpBox(SDL_Rect{ 0, 0, 500, 200 }, SDL_Color{ 255, 255, 255, 255 },
-		"To load/save the file with the specified name:\n\nSaving: the output file is put in the current working directory of the program.\n\nLoading the file requires the file to be put in the same directory as the program executable.\n\nWith file names, if you only type the name only, the file extension will be automatically specified as \"txt\". If you want extensions other than .txt, you can choose to save the file with ANY extension, but to load them, you will be required to enter the name and the EXACT extension of the file.",
-		defaultTextColor,
-		mainFont15, LEFT, LEFT);
+		mainFont15,
+		LEFT, LEFT
+	);
 
-	saveLoadName.toggleVisibility(false);
-	savePromptLabel.toggleVisibility(false);
+	/*TextBox helpBox(
+		{ 0, 0, 500, 200 },
+		SDL_Color{ 255, 255, 255, 255 },
+		helpText,
+		defaultTextColor,
+		mainFont15,
+		LEFT, LEFT
+	);*/
+
+	saveLoadName.visible = false;
+	savePromptLabel.visible = false;
 
 
 	for (int i = 0; i < tableColumns; ++i) {
 		for (int j = 0; j < tableRows; ++j) {
 			if (j == tableColumns - 1 && i == 0) continue;
-			tables[i].push_back(stTable2(tbSize * (i + 1) + 2 * tbSize * i, tbSize * (j + 1) + tbSize * j, "None", "None", mainFont15, tbSize));
+			tables[i].push_back(stTable2(
+				tbSize * (i + 1) + 2 * tbSize * i, tbSize * (j + 1) + tbSize * j,
+				tbSize,
+				mainFont15,
+				mainRenderer,
+				"None", "None"
+			));
 		}
 	}
 
@@ -101,122 +192,138 @@ int main(int argc, char* argv[]) {
 	for (int i = 0; i < tableColumns; ++i) {
 		for (int j = 0; j < tableRows; ++j) {
 			if (j == tableRows - 1 && i == 0) continue;
-			labelBoxes[j].push_back(textBox(SDL_Rect{ tbSize * (3 * i + 1), tbSize * 2 * j, tbSize * 2 + 10, tbSize },
-				SDL_Color{ 177, 177, 177, 0 }, std::to_string(cntr),
-				defaultTextColor,
-				mainFont15, CENTER, CENTER));
+			labelBoxes[j].push_back(
+				TextBox(
+					{ tbSize * 2 + 10.0, tbSize, false },
+					{ tbSize * (3.0 * i + 1.0), static_cast<double>(tbSize * 2 * j), false },
+					std::nullopt,
+					mainRenderer,
+					{ 177, 177, 177, 0 },
+					std::to_string(cntr),
+					defaultTextColor,
+					mainFont15
+				));
 			cntr++;
 		}
 	}
 
-	textButton applyButton(WINDOW_WIDTH - 200 - 50 - 10, WINDOW_HEIGHT - 40,
-		50, 30,
+	TextButton applyButton(
+		{ 50, 30, false },
+		{ WINDOW_WIDTH - 260, WINDOW_HEIGHT - 40, false },
+		std::nullopt,
+		mainRenderer,
 		defaultButtonColor,
-		"Apply", defaultTextColor,
 		hoveredButtonColor,
-		mainFont15,
-		CENTER, CENTER);
+		defaultTextColor,
+		"Apply",
+		mainFont15
+	);
 
-	textButton saveConfButton(20 + 50 + 10, WINDOW_HEIGHT - 40,
-		50, 30,
+	TextButton saveConfButton(
+		{ 50, 30, false },
+		{ 80, WINDOW_HEIGHT - 40, false },
+		std::nullopt,
+		mainRenderer,
 		defaultButtonColor,
-		"Save", defaultTextColor,
 		hoveredButtonColor,
-		mainFont15,
-		CENTER, CENTER);
-	textButton loadConfButton(20, WINDOW_HEIGHT - 40,
-		50, 30,
+		defaultTextColor,
+		"Save", 
+		mainFont15
+	);
+	TextButton loadConfButton(
+		{ 50, 30, false },
+		{ 20, WINDOW_HEIGHT - 40, false },
+		std::nullopt,
+		mainRenderer,
 		defaultButtonColor,
-		"Load", defaultTextColor,
 		hoveredButtonColor,
-		mainFont15,
-		CENTER, CENTER);
+		defaultTextColor,
+		"Load",
+		mainFont15
+	);
 
-	textButton cancelButton(80 + 50 + 10 + 180 + (50 + 20), WINDOW_HEIGHT - 40,
-		50, 30,
+	TextButton cancelButton(
+		{ 50, 30, false },
+		{ 390, WINDOW_HEIGHT - 40, false },
+		std::nullopt,
+		mainRenderer,
 		defaultButtonColor,
-		"Cancel", defaultTextColor,
 		hoveredButtonColor,
-		mainFont15,
-		CENTER, CENTER);
-	textButton confirmButton(80 + 50 + 10 + 180 + 10, WINDOW_HEIGHT - 40,
-		50, 30,
+		defaultTextColor,
+		"Cancel", 
+		mainFont15
+	);
+	TextButton confirmButton(
+		{ 50, 30, false },
+		{ 330, WINDOW_HEIGHT - 40, false },
+		std::nullopt,
+		mainRenderer,
 		defaultButtonColor,
-		"Confirm", defaultTextColor,
 		hoveredButtonColor,
-		mainFont15,
-		CENTER, CENTER);
-	textButton shuffleButton(20, WINDOW_HEIGHT - 80,
-		110, 30,
+		defaultTextColor,
+		"Confirm", 
+		mainFont15
+	);
+	TextButton shuffleButton(
+		{ 110, 30, false },
+		{ 20, WINDOW_HEIGHT - 80, false },
+		std::nullopt,
+		mainRenderer,
 		defaultButtonColor,
-		"Shuffle Positions", defaultTextColor,
 		hoveredButtonColor,
-		mainFont15,
-		CENTER, CENTER);
+		defaultTextColor,
+		"Shuffle Positions", 
+		mainFont15
+	);
 
-	textButton helpButton(180 + 80 + 20, WINDOW_HEIGHT - 70,
-		20, 20,
+	TextButton helpButton(
+		{ 20, 20, false },
+		{ 270, WINDOW_HEIGHT - 70, false },
+		std::nullopt,
+		mainRenderer,
 		defaultButtonColor,
-		"?", defaultTextColor,
 		hoveredButtonColor,
-		mainFont15,
-		CENTER, CENTER);
+		defaultTextColor,
+		"?",
+		mainFont15
+	);
 
 	cancelButton.visible = false;
 	confirmButton.visible = false;
 	helpButton.visible = false;
-	
+
 	for (auto& button : studentBtns.buttons) {
-		std::visit([&](auto& btn) {
-			btn.setAction([&]() {
-				if constexpr (std::is_same_v<std::decay_t<decltype(btn)>, textButton>) {
-					for (auto& b : studentBtns.buttons) {
-						std::visit([&](auto& bhn) {
-							bhn.setAction([&]() {
-								btn.buttonColor = defaultButtonColor;
-								btn.hoverColor = hoveredButtonColor;
-								});
-						}, b);
-					}
-					activeButtonId = btn.id;
-					applyButton.toggleActive(true);
-					nameEnterBox.reset();
-					nameEnterBox.editable = true;
-					SDL_StartTextInput();
-					std::cout << btn.id << '\n';
-					btn.buttonColor = SDL_Color{ 126, 244, 126, 255 };
-					btn.hoverColor = SDL_Color{ 110, 222, 110, 255 };
-				}
-			});
-			btn.setHoverAction([&]() {
-				for (int i = 0; i < studentsCount; i++) {
-					if (i != btn.id) continue;
-					nameLabel.text = "Name: " + students[i].fullName;
-				}
-			});
-		}, button);
+		auto& btn = std::get<TextButton>(button);
+		setButtonAction(btn, applyButton, nameEnterBox, nameLabel);
 	}
 
 	applyButton.setAction([&]() {
 		for (auto& button : studentBtns.buttons) {
-			std::visit([&](auto& btn) {
-				if constexpr (std::is_same_v<std::decay_t<decltype(btn)>, textButton>) {
-					if (btn.id != activeButtonId) return;
-					students[btn.id] = { abbreviateName(nameEnterBox.text, true), nameEnterBox.text, btn.id };
-					btn.text = abbreviateName(nameEnterBox.text, true);
-					std::cout << students[btn.id].name << std::endl;
-					btn.buttonColor = defaultButtonColor;
-					btn.hoverColor = hoveredButtonColor;
-					btn.loadText(mainRenderer);
-					nameEnterBox.reset();
-					nameEnterBox.editable = false;
-					applyButton.toggleActive(false);
-					std::cout << btn.text << '\n';
-					SDL_StopTextInput();
-				}
-			}, button);
+			auto& btn = std::get<TextButton>(button);
+
+			if (btn.getId() != activeButtonId) continue;
+
+			students[btn.getId()] = {
+				abbreviateName(nameEnterBox.getText(), true),
+				nameEnterBox.getText(),
+				btn.getId()
+			};
+
+			btn.text = abbreviateName(nameEnterBox.getText(), true);
+
+			btn.changeButtonColor(defaultButtonColor, mainRenderer);
+			btn.changeHoverColor(hoveredButtonColor, mainRenderer);
+			btn.loadText(mainRenderer);
+
+			nameEnterBox.reset();
+			nameEnterBox.editable = false;
+			activeButtonId = -1;
+
+			applyButton.active = false;
+
+			SDL_StopTextInput();
 		}
-	});
+		});
 
 	saveConfButton.setAction([&]() {
 		if (nameEnterBox.editable)
@@ -224,14 +331,12 @@ int main(int argc, char* argv[]) {
 
 		activeSLFlag = 1;
 
-		confirmButton.toggleVisiblility(true);
-		cancelButton.toggleVisiblility(true);
-		saveLoadName.toggleVisibility(true);
-		savePromptLabel.toggleVisibility(true);
+		confirmButton.visible = true;
+		cancelButton.visible = true;
+		saveLoadName.visible = true;
+		savePromptLabel.visible = true;
 		for (auto& button : studentBtns.buttons) {
-			std::visit([&](auto& btn) {
-				btn.active = false;
-			}, button);
+			std::get<TextButton>(button).active = false;
 		}
 		saveConfButton.active = false;
 		loadConfButton.active = false;
@@ -249,14 +354,12 @@ int main(int argc, char* argv[]) {
 
 		activeSLFlag = 2;
 
-		confirmButton.toggleVisiblility(true);
-		cancelButton.toggleVisiblility(true);
-		saveLoadName.toggleVisibility(true);
-		savePromptLabel.toggleVisibility(true);
+		confirmButton.visible = true;
+		cancelButton.visible = true;
+		saveLoadName.visible = true;
+		savePromptLabel.visible = true;
 		for (auto& button : studentBtns.buttons) {
-			std::visit([&](auto& btn) {
-				btn.active = false;
-			}, button);
+			std::get<TextButton>(button).active = false;
 		}
 		saveConfButton.active = false;
 		loadConfButton.active = false;
@@ -266,22 +369,19 @@ int main(int argc, char* argv[]) {
 		saveLoadName.editable = true;
 
 		SDL_StartTextInput();
-	});
+		});
 
 	cancelButton.setAction([&]() {
 		activeSLFlag = 0;
-		confirmButton.toggleVisiblility(false);
-		cancelButton.toggleVisiblility(false);
-		saveLoadName.toggleVisibility(false);
-		savePromptLabel.toggleVisibility(false);
+		confirmButton.visible = false;
+		cancelButton.visible = false;
+		saveLoadName.visible = false;
+		savePromptLabel.visible = false;
 		for (auto& button : studentBtns.buttons) {
-			std::visit([&](auto& btn) {
-				btn.active = true;
-				if constexpr (std::is_same_v<std::decay_t<decltype(btn)>, textButton>) {
-					btn.buttonColor = defaultButtonColor;
-					btn.hoverColor = hoveredButtonColor;
-				}
-			}, button);
+			auto& btn = std::get<TextButton>(button);
+			btn.active = true;
+			btn.changeButtonColor(defaultButtonColor, mainRenderer);
+			btn.changeHoverColor(hoveredButtonColor, mainRenderer);
 		}
 		saveConfButton.active = true;
 		loadConfButton.active = true;
@@ -291,27 +391,25 @@ int main(int argc, char* argv[]) {
 		saveLoadName.editable = false;
 
 		SDL_StopTextInput();
-	});
+		});
 
 	confirmButton.setAction([&]() {
-		confirmButton.toggleVisiblility(false);
-		cancelButton.toggleVisiblility(false);
-		saveLoadName.toggleVisibility(false);
-		savePromptLabel.toggleVisibility(false);
+		confirmButton.visible = false;
+		cancelButton.visible = false;
+		saveLoadName.visible = false;
+		savePromptLabel.visible = false;
 		for (auto& button : studentBtns.buttons) {
-			std::visit([&](auto& btn) {
-				btn.active = true;
-			}, button);
+			std::get<TextButton>(button).active = true;
 		}
 		switch (activeSLFlag) {
-		// For saving operation
+			// For saving operation
 		case 1:
-			saveStudentDataBinary(students, saveLoadName.text);
+			saveStudentDataBinary(students, saveLoadName.getText());
 			break;
 
-		// For loading operation
+			// For loading operation
 		case 2:
-			readStudentDataBinary(saveLoadName.text, studentBtns, mainRenderer, students);
+			readStudentDataBinary(saveLoadName.getText(), studentBtns, mainRenderer, students);
 			break;
 		}
 		activeSLFlag = 0;
@@ -323,26 +421,30 @@ int main(int argc, char* argv[]) {
 		saveLoadName.editable = false;
 
 		SDL_StopTextInput();
-	});
+		});
+
+	auto shuffleStudentPositions = [&](std::vector<Student>& students) {
+		for (std::size_t i = 0; i < students.size(); i++) {
+			std::uniform_int_distribution<std::size_t> dist(i, students.size() - 1);
+			std::size_t j = dist(g);
+			std::swap(students[i].number, students[j].number);
+		}
+	};
 
 	shuffleButton.setAction([&]() {
-		std::random_device rd;
-		std::mt19937 g(rd());
-		std::shuffle(students.begin(), students.end(), g);
+		shuffleStudentPositions(students);
 
 		for (auto& button : studentBtns.buttons) {
-			std::visit([&](auto& btn) {
-				if constexpr (std::is_same_v<std::decay_t<decltype(btn)>, textButton>) {
-					for (size_t i = 0; i < students.size(); ++i) {
-						if (students[i].number == btn.id) {
-							btn.text = students[i].name;
-							students[i].number = btn.id;
-							btn.loadText(mainRenderer);
-							continue;
-						}
-					}
-				}
-			}, button);
+			auto& btn = std::get<TextButton>(button);
+			for (size_t i = 0; i < students.size(); ++i) {
+				if (students[i].number != btn.getId()) continue;
+
+				btn.text = students[i].name;
+				students[i].number = btn.getId();
+
+				btn.loadText(mainRenderer);
+				break;
+			}
 		}
 	});
 
@@ -360,17 +462,13 @@ int main(int argc, char* argv[]) {
 			helpWindowPresent = false;
 		}
 	});
-	
-	studentBtns.loadAllText(mainRenderer);
-	applyButton.loadText(mainRenderer);
-	saveConfButton.loadText(mainRenderer);
-	loadConfButton.loadText(mainRenderer);
-	confirmButton.loadText(mainRenderer);
-	cancelButton.loadText(mainRenderer);
-	shuffleButton.loadText(mainRenderer);
-	helpButton.loadText(mainRenderer);
 
 	applyButton.toggleActive(false);
+
+	// studentBtns.initializeAll(mainRenderer);
+	for (auto& button : studentBtns.buttons) {
+		std::get<TextButton>(button).loadText(mainRenderer);
+	}
 
 	bool isRunning = true;
 
@@ -379,16 +477,15 @@ int main(int argc, char* argv[]) {
 		while (SDL_PollEvent(&e)) {
 			switch (e.type) {
 			case SDL_WINDOWEVENT: {
-				if (e.window.event == SDL_WINDOWEVENT_CLOSE) {
-					if (e.window.windowID == SDL_GetWindowID(mainWindow))
-						isRunning = false;
-					else if (e.window.windowID == SDL_GetWindowID(helpWindow)) {
-						SDL_DestroyWindow(helpWindow);
-						SDL_DestroyRenderer(helpWindowRenderer);
-						helpWindow = nullptr;
-						helpWindowRenderer = nullptr;
-						helpWindowPresent = false;
-					}
+				if (e.window.event != SDL_WINDOWEVENT_CLOSE) break;
+				if (e.window.windowID == SDL_GetWindowID(mainWindow))
+					isRunning = false;
+				else if (e.window.windowID == SDL_GetWindowID(helpWindow)) {
+					SDL_DestroyWindow(helpWindow);
+					SDL_DestroyRenderer(helpWindowRenderer);
+					helpWindow = nullptr;
+					helpWindowRenderer = nullptr;
+					helpWindowPresent = false;
 				}
 				break;
 			}
@@ -398,11 +495,11 @@ int main(int argc, char* argv[]) {
 			}
 			}
 			studentBtns.handleAllEvent(e);
-			nameEnterBox.handleEvent(e);
 			applyButton.handleEvents(e);
+			nameEnterBox.handleEvents(e);
 			saveConfButton.handleEvents(e);
 			loadConfButton.handleEvents(e);
-			saveLoadName.handleEvent(e);
+			saveLoadName.handleEvents(e);
 			confirmButton.handleEvents(e);
 			cancelButton.handleEvents(e);
 			shuffleButton.handleEvents(e);
@@ -412,7 +509,7 @@ int main(int argc, char* argv[]) {
 			int chkInd = 0;
 			for (auto& button : studentBtns.buttons) {
 				std::visit([&](auto& btn) {
-					if (btn.hovered) { chkHvr = true;  return; }
+					if (btn.isHovered()) { chkHvr = true;  return; }
 					chkInd++;
 					if (chkInd == studentsCount)
 						nameLabel.text = "Name: None";
@@ -420,33 +517,33 @@ int main(int argc, char* argv[]) {
 				if (chkHvr) break;
 			}
 		}
-		
+
 		SDL_SetRenderDrawColor(mainRenderer, windowColor.r, windowColor.g, windowColor.b, windowColor.a);
 		SDL_RenderClear(mainRenderer);
 
-		studentBtns.renderAll(mainRenderer);
-		nameEnterBox.render(mainRenderer);
-		applyButton.render(mainRenderer);
-		saveConfButton.render(mainRenderer);
-		loadConfButton.render(mainRenderer);
-		saveLoadName.render(mainRenderer);
-		savePromptLabel.render(mainRenderer);
-		confirmButton.render(mainRenderer);
-		cancelButton.render(mainRenderer);
-		shuffleButton.render(mainRenderer);
-		nameLabel.render(mainRenderer);
-		helpButton.render(mainRenderer);
+		studentBtns.renderAll();
+		nameEnterBox.render();
+		applyButton.render();
+		saveConfButton.render();
+		loadConfButton.render();
+		saveLoadName.render();
+		savePromptLabel.render();
+		confirmButton.render();
+		cancelButton.render();
+		shuffleButton.render();
+		nameLabel.render();
+		helpButton.render();
 		if (helpWindowRenderer) {
 			SDL_SetRenderDrawColor(helpWindowRenderer, windowColor.r, windowColor.g, windowColor.b, windowColor.a);
 			SDL_RenderClear(helpWindowRenderer);
-			helpBox.render(helpWindowRenderer);
+			// helpBox.render();
 			SDL_RenderPresent(helpWindowRenderer);
 		}
 
 
 		for (auto& boxes : labelBoxes) {
 			for (auto& box : boxes) {
-				box.render(mainRenderer);
+				box.render();
 			}
 		}
 

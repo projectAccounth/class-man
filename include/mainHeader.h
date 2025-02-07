@@ -21,13 +21,15 @@
 #include <cstdlib>
 #include <cctype>
 #include <vector>
-#include <functional>
-#include <variant>
-#include <type_traits>
 #include <fstream>
 #include <algorithm>
 #include <random>
 #include <sstream>
+#include <lfmain.h>
+
+#include "logging.h"
+
+#define LOGF_NAME "outlog.txt"
 
 const int tableRows = 4, tableColumns = 4;
 const int tbSize = 60;
@@ -36,11 +38,5 @@ const int studentsCount = 30;
 const SDL_Color defaultButtonColor = SDL_Color{ 177, 177, 177, 255 };
 const SDL_Color hoveredButtonColor = SDL_Color{ 122, 122, 122, 255 };
 const SDL_Color defaultTextColor = SDL_Color{ 0, 0, 0, 255 };
-
-enum textAlign {
-    LEFT,
-    CENTER,
-    RIGHT
-};
 
 #endif /* MAIN_HDR_H */
